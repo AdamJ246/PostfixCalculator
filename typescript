@@ -1,0 +1,436 @@
+Script started on Wed 20 Mar 2024 06:42:49 PM EDT
+]0;johnston_ar@cobra:~/Project2[?1034h[johnston_ar@cobra Project2]$ cat postfix.cc[Kpp
+#include <iostream>
+#include <string>
+#include "stack.h"
+#include <vector>
+#include <limits>
+#include <cstdlib>
+#include "sexceptions.h" 
+using namespace std;
+
+void runTheProgram(stack<int> tokens);
+int mathOp(stack<int>& inStack, char token);
+void mathPop(stack<int>& inStack);
+
+int main(){
+	//begin by setting up a stack that will be erased upon completion
+	//of the program run.
+	stack<int> tokens;
+	//begins the primary evaluator function, taking in a token stack.
+	runTheProgram(tokens);
+/* 	Here is the primary while loop responsible for asking the user for
+ *  	input on whether or not they wish to run the calculator program again.
+ *	The following options are:
+ *	Y: will run the postfix evaluator again
+ *	N: will set the while loop to end on following completion
+ *	The default will cover any other invalid inputs
+ *
+ *	The user will be notified when the calculator program has ceased.    */
+	char userChoice;
+	bool codeRun = true;
+	while(codeRun){
+		cout << endl << "Go Again? (Y/N) ";
+		cin >> userChoice;
+		switch(userChoice){
+			case 'Y':
+				runTheProgram(tokens); break;
+			case 'N':
+				codeRun = false; break;
+			default:
+				cout << "Invalid input try again!" << endl; break;
+		}	
+	}
+	cout << "! Ending calculator Program." << endl;
+return 0;
+}
+
+/*  Here is the primary program activation function.
+ *  It will take in an empty integer tokens stack
+ *  It will utilize two other functions including:
+ *  mathOp and mathPop				  */ 
+void runTheProgram(stack<int>tokens){
+	cout << "@@@@@@@@@@@@@@@@@ THE POSTFIX EVALUATOR @@@@@@@@@@@@@@@@@" << endl;	
+	cout << endl << "Your RPN Expression : ";
+	cout.clear();
+	//Read in a user string input
+	string userStringCommand;	
+	cin.clear();
+	cin.sync();
+	getline(cin, userStringCommand, ';');
+	userStringCommand = userStringCommand + ';';
+	//clean up any unnecessary inputs just in case, as well as making sure the token
+	//stack is absolutely empty upon a re-run
+	cin.ignore(numeric_limits<streamsize>::max(), '\n');
+	while (!tokens.isEmpty()) {
+  		tokens.pop();
+	}
+	//using a for loop, the characters within the string are separated into
+	//tokens that will then be analyzed and utilized in the mathematical operations.
+	int token;
+	char tokenOp;
+	bool isNeg;
+	int popResult;
+	for(int i = 0; i < userStringCommand.size(); i++){
+		char c = userStringCommand[i];
+		//if there is a space, skip over it
+		if(c == ' ' || c == '\n')
+			continue;
+		//if there is a underscore, consider the number adjacent to be negative
+		if(c == '_'){
+			isNeg = true;
+			continue;
+		}
+		//if the current character is a mathematical operator or digit, the if statement will
+		//convert the character into a usable piece of the token union.
+		if(isdigit(c) || c == '+' || c == '-' || c == '*' || c == '/'|| c == ';' || c == '%') {
+			//if a digit is detected, check to see if there are recurring digits afterwards.
+			if(isdigit(c)){
+				string numStr;
+				//while there are recurring digits, combine into a string.
+				while(i < userStringCommand.size() && isdigit(userStringCommand[i])){
+					numStr += userStringCommand[i];
+					i++;
+				}
+				i--;
+				
+				//make the string become a integer under token after converting
+				//the string to an int and then checking if the number is negative.
+				token = (isNeg ? -1 : 1) * atoi(numStr.c_str());
+				isNeg = false;
+				
+				//will attempt to catch an overflow if there are too many inputs in
+				//the expression given.
+				try{	
+				tokens.push(token);
+				}catch(Overflow exc){
+				cout << endl << "Stack Overflow " << endl;
+				tokens.pop();
+				}
+				cout << "Token = " << token << "	";
+				cout << "Push = " << token << endl;
+				token = 0;
+			//if the negative flag is true and there is no digit following it then there
+			//will be a breaking error for an invalid expression.	
+			}else if(isNeg == true && !isdigit(c)){
+				cout << "Negative sign in front of non digit error! \n\n";
+				break;
+			//once the code reaches the input breaking semicolon, the token will be displayed
+			//before the final answer is displayed afterwards.
+			}else if(c == ';'){
+				cout << "Token = " << c << "	"; 
+				if(!tokens.isEmpty()){
+					mathPop(tokens);
+				}else{
+					cout << "\nNon existent expression or answer --  Exception!";
+				}
+				cout << "\n\n";
+				break;
+			//if the input was one of any of the desired operators, this else statement will perform
+			//the necessary mathematical functions depending on the operator.
+			}else{
+	       			tokenOp = c;
+				cout << "Token = " << tokenOp << "	";   
+				//attempts to catch an exception of division by zero and underflow.
+				try{				
+				popResult = mathOp(tokens, tokenOp);
+				}catch(DivByZero exc){
+					cout << endl << "Division by Zero Exception -- Now Exiting. \n\n" << endl; break;
+				}catch(Underflow exc){
+					cout << endl << "Underflow Exception" << endl; break;
+				}
+				//will push the output answer back into the stack.
+				cout << "Push = " << popResult << endl;
+				tokens.push(popResult);
+				tokenOp = '0';
+			}
+  		//if the user inputs an invalid expression that includes improper characters, the code will end.
+		}else{
+			cout << "\nException -- You Have entered An Invalid Expression.\n";
+			break;
+		}
+	}
+	//one more attempt at clearing the stack for final.
+	while(!tokens.isEmpty()){
+		tokens.pop();
+	}
+	
+}
+
+
+//this function takes in the stack and a singular operator to perfrom a
+//mathematical funciton based on the two top values within the stack. It
+//will return the updated stack once the process is complete.
+int mathOp(stack<int>& inStack, char tokenOp){
+	int opVal1; int opVal2; int finVal;
+	switch(tokenOp){
+		case '+':
+			opVal1 = inStack.top();
+			mathPop(inStack);
+			opVal2 = inStack.top();
+			mathPop(inStack);
+			finVal = opVal2 + opVal1;
+			return finVal; break;
+		case '-':
+			opVal1 = inStack.top();
+			mathPop(inStack);
+			opVal2 = inStack.top();
+			mathPop(inStack);
+			finVal = opVal2 - opVal1;
+			return finVal; break;
+		case '*':
+			opVal1 = inStack.top();
+			mathPop(inStack);
+			opVal2 = inStack.top();
+			mathPop(inStack);
+			finVal = opVal2 * opVal1;
+			return finVal; break;
+		case '/':
+			opVal1 = inStack.top();
+			mathPop(inStack);
+			opVal2 = inStack.top();
+			mathPop(inStack);
+			if(opVal1 == 0){
+				throw DivByZero();
+			}
+			finVal = opVal2 / opVal1;
+			return finVal; break;	
+		case '%':
+			opVal1 = inStack.top();
+			mathPop(inStack);
+			opVal2 = inStack.top();
+			mathPop(inStack);
+			if(opVal1 == 0){
+				throw DivByZero();
+			}
+			finVal = opVal2 % opVal1;
+			return finVal; break;
+		default: break;
+	}
+}
+
+//This function is used within the mathOp function where the action of
+//popping the stack is repeated many times. It will display the popped
+//value.
+void mathPop(stack<int>& inStack){
+	int popVal;
+	popVal = inStack.top();
+	cout << "Pop " << popVal << "		";
+	inStack.pop();
+}
+
+
+
+]0;johnston_ar@cobra:~/Project2[johnston_ar@cobra Project2]$ cat myBet.cpp
+#include <iostream>
+#include <string>
+#include "stack.h"
+#include <vector>
+#include <fstream>
+#include "sexceptions.h"
+using namespace std;
+
+struct BetNode
+{
+	char info;
+	BetNode* left;
+	BetNode* right;
+};
+
+void runTheProgram(ifstream& file);
+void infixToPostfix(ifstream& file, stack<char> tokens, string& postfixExpression, string inLine);
+bool higherOrEqualPrecedence(char top, char input);
+void postToTree(string postfixExpression, BetNode*& root);
+void printPrefix(BetNode* t);
+
+int main(){
+	//first, a file will be opened to the desired file of operations
+	ifstream file("infix.dat", ios::in);
+	string inLine;
+	if(file.is_open()){
+		//the main program will be run with the opened file
+		runTheProgram(file);
+		file.close();
+	}
+	else
+		cout << "Error opening file. Program will end. \n\n";	
+return 0;
+}
+
+/*   This primary program will input a file and use three functions:
+ *	infixToPostfix, postToTree, and printPrefix
+ *   These functions are performed for each line grabbed from the file.
+ *   This will perform until there are no lines left to get.
+ */
+void runTheProgram(ifstream& file){
+	stack<char> tokens;
+	string inLine;
+	while(getline(file, inLine)){
+		string postfixExpression;
+		infixToPostfix(file, tokens, postfixExpression, inLine);
+	
+		BetNode* root = NULL;
+		postToTree(postfixExpression, root);
+		postfixExpression = "";
+	
+		printPrefix(root);
+		cout << "\n\n";
+	}
+}
+
+//This function turns a string of text grabbed from an input file and analyzes each character
+//as it traverses the string. It will determine which order to assemble a new string that will
+//represent the postfix expression version of the original operation
+void infixToPostfix(ifstream& file, stack<char> tokens, string& postfixExpression, string inLine){	
+	//this will attempt to catch any underflow
+	try{	
+	//this primary for loop traverses the string
+	for(int i = 0; i < inLine.size(); i++){
+		char c = inLine[i];
+		char c2 = inLine[i+2];
+		//if the character is a space, skip
+		if(c == ' ')
+			continue;
+		//if the character is a number, it will automatically add it to the end of the string
+		if(isdigit(c)){
+			postfixExpression = postfixExpression + c + ' ';
+		//if the character is an operator, it will determine its precedence before pushing it onto
+		//a token operator stack to be popped upon encountering a closing parenthesis
+		}else if(c == '+' || c == '-' || c == '*' || c == '/' || c == '('){			
+		try{
+			if(!isdigit(c2) && !tokens.isEmpty() && higherOrEqualPrecedence(c, tokens.top()) && tokens.top() != '('){
+				postfixExpression = postfixExpression + tokens.top() + ' ';
+				tokens.pop();
+			}
+			tokens.push(c);
+		}catch(Underflow exc){
+			cout << "underflow here" << endl;
+			continue;
+		}
+		//once a closing parenthesis is encountered, the program will pop all operators until another
+		//open parenthesis is encountered in which it will pop and move on.
+		}else if(c == ')'){
+			while(!tokens.isEmpty() && tokens.top() != '('){
+				postfixExpression = postfixExpression + tokens.top() + ' ';
+				tokens.pop();
+			}
+			if(!tokens.isEmpty())
+				tokens.pop();
+			while(!tokens.isEmpty() && tokens.top() != '('){
+				postfixExpression = postfixExpression + tokens.top() + ' ';
+				tokens.pop();
+			}
+		}
+	}
+	//uncomment if the postfixexpression would like to be printed.
+	//cout << postfixExpression << "\n"; 	
+	}catch(Underflow exc){
+		cout << "ooops Underflow: \n";
+	}
+
+}
+
+//Returns true if the first character is of equal
+//or higher precedence compared to the second one,
+//false otherwise.
+bool higherOrEqualPrecedence(char top, char input) {
+	if(top == input)
+		return true;
+	if(((top =='*') || (top == '/')) && input == '-')
+		return false;
+	if((top == '*') || (top == '/'))
+		return true;
+	if((top == '+') || (top == '-')){
+		if((input == '+') || (input == '-'))
+			return true;
+	}
+	if(top == '(')
+		return false;
+	return false;
+}
+
+//This function will take a postfix expression string and create a binary expression tree
+//with it.
+void postToTree(string postfixExpression, BetNode*& root){
+	stack<BetNode*> treeStack;
+	for(int i=0; i< postfixExpression.size(); i++){
+		char c = postfixExpression[i];
+		if(c == ' ')
+			continue; //use this to skip any blanks
+		//if a digit is encountered, create a null leaf node
+		if(isdigit(c)){
+			BetNode* newNode = new BetNode;
+			newNode -> info = c;
+			newNode -> left = NULL;
+			newNode -> right = NULL;
+			treeStack.push(newNode);
+		//otherwise, once an operator is encountered, two numbers will be taken
+		//from the stack and be assigned to the operator which will be a new root
+		//node.
+		}else if(!treeStack.isEmpty()){ 
+			BetNode* rightOperand = treeStack.top();
+			treeStack.pop();
+			BetNode* leftOperand = treeStack.top();
+			if(!treeStack.isEmpty())
+				treeStack.pop();
+			
+			BetNode* newNode = new BetNode;
+			newNode -> info = c;
+			newNode -> left = leftOperand;
+			newNode -> right = rightOperand;
+			treeStack.push(newNode);
+		}
+	}
+	//once the entire tree is created, the root is declared and sent out of the function
+	root = treeStack.top();
+	if(!treeStack.isEmpty())
+		treeStack.pop();
+}
+
+//This function prints a given binary expression tree in prefix form.
+void printPrefix(BetNode* t){
+	if(t != NULL){
+		cout << t-> info << " ";
+		printPrefix(t->left);
+		printPrefix(t->right);
+	}
+}
+]0;johnston_ar@cobra:~/Project2[johnston_ar@cobra Project2]$ c++ postif[K[Kfix.cpp
+]0;johnston_ar@cobra:~/Project2[johnston_ar@cobra Project2]$ ./a.out
+@@@@@@@@@@@@@@@@@ THE POSTFIX EVALUATOR @@@@@@@@@@@@@@@@@
+
+Your RPN Expression : 3 4+;
+Token = 3	Push = 3
+Token = 4	Push = 4
+Token = +	Pop 4		Pop 3		Push = 7
+Token = ;	Pop 7		
+
+
+Go Again? (Y/N) Y
+@@@@@@@@@@@@@@@@@ THE POSTFIX EVALUATOR @@@@@@@@@@@@@@@@@
+
+Your RPN Expression : 5 6 -;
+Token = 5	Push = 5
+Token = 6	Push = 6
+Token = -	Pop 6		Pop 5		Push = -1
+Token = ;	Pop -1		
+
+
+Go Again? (Y/N) N
+! Ending calculator Program.
+]0;johnston_ar@cobra:~/Project2[johnston_ar@cobra Project2]$ c++ myBet.cpp
+]0;johnston_ar@cobra:~/Project2[johnston_ar@cobra Project2]$ ./a.out
++ 3 4 
+
+* + 5 4 8 
+
+* / * 0 + 1 2 - 3 + 4 5 / / 6 7 * 8 9 
+
++ - 1 * 3 + 4 * 5 6 7 
+
+- * 1 + 2 3 8 
+
+]0;johnston_ar@cobra:~/Project2[johnston_ar@cobra Project2]$ exit
+exit
+
+Script done on Wed 20 Mar 2024 06:43:57 PM EDT

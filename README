@@ -1,0 +1,28 @@
+The purpose of the postfix.cpp program is to perform a postifx calculation given a postfix expression.
+This program inputs:
+	Expression: takes an input expression from the user.
+	Y: run the program one more time
+	N: ends the calculator program
+This program outputs:
+	The sequence and process of calculating the expression before pushing an answer after a semicolon
+
+This program uses:
+iostream, string, "stack.h", vector, limits, cstdlib, "sexceptions.h" 
+	where stack.h and sexceptions are local files that include the necessary building blocks of the stack
+	necessary exceptions to check for errors.
+Outline:
+	The code uses a for loop to parse the information before using a stack to store information. As operators
+	are traversed, numbers are extracted and worked on before being put back into the stack. This is repeated until
+	there is no other evaluation left.
+___________________
+The goal of the myBet.cpp program is to perform a infix to prefix operation on a given mathematical funciton.
+this program inputs:
+	No user input
+outputs:
+	The prefix notation of the given file of mathematical functions.
+This program uses:
+iostream, string, "stack.h", vector, fstream, "sexceptions.h"
+	where sexceptions and stack are local files used just like the postfix class
+Outline:
+	the code uses a for loop to parse through a string representing a mathematical function before converting it to
+	postfix notation, then a BET, and finally a prefix notation is printed.
